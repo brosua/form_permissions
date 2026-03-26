@@ -1,0 +1,36 @@
+{
+    "name": "brosua/form-permissions",
+    "type": "typo3-cms-extension",
+    "description": "Adds permission-aware access control to the EXT:form database storage.",
+    "license": ["GPL-2.0-or-later"],
+    "keywords": ["typo3", "form", "permissions", "backend", "access-control"],
+    "homepage": "https://github.com/brosua/form_permissions",
+    "support": {
+        "issues": "https://github.com/brosua/form_permissions/issues",
+        "source": "https://github.com/brosua/form_permissions"
+    },
+    "authors": [
+        {
+            "name": "Josua Vogel",
+            "email": "j.vogel97@web.de",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "typo3/cms-core": "14.2.x-dev",
+        "typo3/cms-form": "14.2.x-dev"
+    },
+    "autoload": {
+        "psr-4": {
+            "Brosua\\FormPermission\\": "Classes/"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "extra": {
+        "typo3/cms": {
+            "extension-key": "form_permissions"
+        }
+    }
+}

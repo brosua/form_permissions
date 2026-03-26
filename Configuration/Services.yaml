@@ -1,0 +1,21 @@
+services:
+  _defaults:
+    autowire: true
+    autoconfigure: true
+    public: false
+
+  Brosua\FormPermission\:
+    resource: '../Classes/*'
+
+  Brosua\FormPermission\Storage\PermissionAwareDatabaseStorageAdapter:
+    autoconfigure: false
+    tags:
+      - name: form.storage.adapter
+
+  # Disable autoconfigure on the original DatabaseStorageAdapter so that
+  # EXT:form's _instanceof rule is NOT applied to it during compilation.
+  # The service stays in the container for constructor injection but is no
+  # longer iterated as a standalone storage adapter.
+  TYPO3\CMS\Form\Storage\DatabaseStorageAdapter:
+    autowire: true
+    autoconfigure: false

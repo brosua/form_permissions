@@ -1,0 +1,57 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  release:
+    name: Publish Release
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    env:
+      EXTENSION_KEY: form_permissions
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract version from tag
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set version in ext_emconf.php
+        run: |
+          sed -i "s/'version' => '.*'/'version' => '${{ steps.version.outputs.value }}'/" ext_emconf.php
+
+      - name: Upload to TER
+        uses: tomasnorre/typo3-upload-ter@v2
+        with:
+          api-token: ${{ secrets.TYPO3_API_TOKEN }}
+          php-version: "8.4"
+
+      - name: Extract changelog for this version
+        id: changelog
+        run: |
+          # Extract section between current version header and next version header
+          version="${{ steps.version.outputs.value }}"
+          changelog=$(awk "/^## \\[${version}\\]/{found=1; next} /^## \\[/{if(found) exit} found{print}" CHANGELOG.md)
+          # Use GitHub Actions multiline output
+          {
+            echo "body<<CHANGELOG_EOF"
+            echo "$changelog"
+            echo "CHANGELOG_EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: v${{ steps.version.outputs.value }}
+          body: ${{ steps.changelog.outputs.body }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

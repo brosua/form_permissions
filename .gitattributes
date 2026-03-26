@@ -1,0 +1,5 @@
+# Exclude from TER/packaging export
+/.git            export-ignore
+/.github         export-ignore
+/.gitattributes  export-ignore
+/.gitignore      export-ignore
