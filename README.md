@@ -37,5 +37,3 @@ Grant the editing group the following rights in the backend user group record:
 | **Tables (modify)** | `Form Definition (form_definition)` |
 | **Web mounts** | Include all pages that serve as form storage locations |
 | **Page permissions** | At minimum `Show page` on every storage page |
-
-Without `tables_select` the user cannot see any forms. Without `tables_modify` the form manager's *New Form* button is hidden.

@@ -18,8 +18,8 @@
     ],
     "require": {
         "php": "^8.2",
-        "typo3/cms-core": "14.2.x-dev",
-        "typo3/cms-form": "14.2.x-dev"
+        "typo3/cms-core": "^14.2 || 14.3.x-dev",
+        "typo3/cms-form": "^14.2 || 14.3.x-dev"
     },
     "autoload": {
         "psr-4": {
