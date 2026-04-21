@@ -102,6 +102,48 @@ final readonly class FormPermissionChecker
     }
 
     /**
+     * Assert write access for an already-loaded record.
+     *
+     * This avoids a redundant DB lookup when the caller already has the record
+     * (e.g. write/delete in the storage adapter).
+     *
+     * @throws PersistenceManagerException
+     */
+    public function assertWriteAccessForRecord(int $uid, array $record): void
+    {
+        if (!$this->hasBackendUser()) {
+            throw new PersistenceManagerException(
+                sprintf('Access denied: No backend user session for form "%d".', $uid),
+                1743000003
+            );
+        }
+        if (!$this->tcaSchemaFactory->has(FormDefinitionRepository::TABLE_NAME)) {
+            throw new PersistenceManagerException(
+                sprintf('Access denied: TCA table "%s" not available.', FormDefinitionRepository::TABLE_NAME),
+                1743000004
+            );
+        }
+        if (!$this->hasTableWriteAccess()) {
+            throw new PersistenceManagerException(
+                sprintf('Access denied: No tables_modify permission for "%s".', FormDefinitionRepository::TABLE_NAME),
+                1743000005
+            );
+        }
+
+        $pid = (int)($record['pid'] ?? throw new PersistenceManagerException(
+            sprintf('The form with uid "%d" has no valid pid.', $uid),
+            1743000006
+        ));
+
+        if (!$this->hasPageAccess($pid)) {
+            throw new PersistenceManagerException(
+                sprintf('Access denied: You do not have write permission for form "%d" on page "%d".', $uid, $pid),
+                1743000007
+            );
+        }
+    }
+
+    /**
      * Shared logic for read and write access checks.
      *
      * @param bool $write TRUE for write/modify check, FALSE for read/select check

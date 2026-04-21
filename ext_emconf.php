@@ -7,9 +7,9 @@ $EM_CONF[$_EXTKEY] = [
     'author' => 'Josua Vogel',
     'author_email' => 'j.vogel97@web.de',
     'state' => 'stable',
-    'version' => '1.0.0',
+    'version' => '1.0.3',
     'constraints' => [
-        'depends' => ['typo3' => '14.2.0-14.99.99'],
+        'depends' => ['typo3' => '14.3.0-14.99.99'],
         'conflicts' => [],
         'suggests' => [],
     ],

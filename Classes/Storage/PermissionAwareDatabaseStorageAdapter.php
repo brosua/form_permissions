@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Brosua\FormPermission\Storage;
 
 use Brosua\FormPermission\Security\FormPermissionChecker;
+use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Backend\Utility\BackendUtility;
+use TYPO3\CMS\Core\Http\ApplicationType;
 use TYPO3\CMS\Core\Utility\MathUtility;
 use TYPO3\CMS\Form\Domain\DTO\FormData;
 use TYPO3\CMS\Form\Domain\DTO\FormMetadata;
@@ -29,15 +31,25 @@ final readonly class PermissionAwareDatabaseStorageAdapter implements StorageAda
     ) {
     }
 
-    public function read(FormIdentifier $identifier): FormData
+    public function read(FormIdentifier $identifier, ?ServerRequestInterface $request = null): FormData
     {
-        $this->formPermissionChecker->assertReadAccess($identifier);
-        return $this->inner->read($identifier);
+        // In frontend context no backend permission checks are needed (no BE session).
+        // In all other contexts the custom permission checker is applied INSTEAD of
+        // delegating to inner first – this avoids loading the record twice.
+        $applicationType = $request !== null ? ApplicationType::fromRequest($request) : null;
+        if (!$applicationType?->isFrontend()) {
+            $this->formPermissionChecker->assertReadAccess($identifier);
+        }
+        // Delegate to inner which handles JSON parsing, record loading and its own
+        // permission check.  The double-load is acceptable here because read() must
+        // return the full parsed FormData which only inner can build.
+        return $this->inner->read($identifier, $request);
     }
 
     public function write(FormIdentifier $identifier, FormData $data, ?StorageContext $context = null): FormIdentifier
     {
-        if (str_starts_with($identifier->identifier, 'NEW')) {
+        // --- NEW form -----------------------------------------------------------
+        if (!$this->exists($identifier)) {
             $pid = $context?->pid ?? 0;
 
             if (!$this->isAllowedStorageLocation((string)$pid)) {
@@ -55,14 +67,50 @@ final readonly class PermissionAwareDatabaseStorageAdapter implements StorageAda
             return new FormIdentifier((string)$uid);
         }
 
-        $this->formPermissionChecker->assertWriteAccess($identifier);
-        return $this->inner->write($identifier, $data, $context);
+        // --- Existing form – single record load for permission + update ---------
+        $uid = $this->extractUidOrThrow($identifier);
+        $record = $this->repository->findByUid($uid);
+        if ($record === null) {
+            throw new PersistenceManagerException(
+                sprintf('The form with uid "%d" could not be found.', $uid),
+                1743000012
+            );
+        }
+
+        $this->formPermissionChecker->assertWriteAccessForRecord($uid, $record);
+
+        $result = $this->repository->update($uid, $data);
+        if (!$result) {
+            throw new PersistenceManagerException(
+                sprintf('Failed to update form definition with uid "%d".', $uid),
+                1743000013
+            );
+        }
+
+        return $identifier;
     }
 
     public function delete(FormIdentifier $identifier): void
     {
-        $this->formPermissionChecker->assertWriteAccess($identifier);
-        $this->inner->delete($identifier);
+        // Single record load for permission check + delete
+        $uid = $this->extractUidOrThrow($identifier);
+        $record = $this->repository->findByUid($uid);
+        if ($record === null) {
+            throw new PersistenceManagerException(
+                sprintf('The form with uid "%d" could not be found.', $uid),
+                1743000014
+            );
+        }
+
+        $this->formPermissionChecker->assertWriteAccessForRecord($uid, $record);
+
+        $success = $this->repository->remove($uid);
+        if (!$success) {
+            throw new PersistenceManagerException(
+                sprintf('Failed to delete form definition with uid "%d".', $uid),
+                1743000015
+            );
+        }
     }
 
     public function exists(FormIdentifier $identifier): bool
@@ -183,6 +231,20 @@ final readonly class PermissionAwareDatabaseStorageAdapter implements StorageAda
     public function getUniquePersistenceIdentifier(string $formIdentifier, string $storageLocation): string
     {
         return $this->inner->getUniquePersistenceIdentifier($formIdentifier, $storageLocation);
+    }
+
+    /**
+     * @throws PersistenceManagerException
+     */
+    private function extractUidOrThrow(FormIdentifier $identifier): int
+    {
+        if (!MathUtility::canBeInterpretedAsInteger($identifier->identifier)) {
+            throw new PersistenceManagerException(
+                sprintf('Invalid database identifier "%s". Expected numeric UID.', $identifier->identifier),
+                1743000016
+            );
+        }
+        return (int)$identifier->identifier;
     }
 
     /**
